@@ -4,6 +4,7 @@ import numpy as np
 import sys, os, signal, random, time, argparse
 import logging, threading
 from sklearn import metrics
+import xgboost as xgb
 
 sys.path.append('./resources/libraries')
 import ei_tensorflow.training
@@ -60,7 +61,7 @@ def main_function():
     )
 
     print('')
-    print('Training LGBM model...')
+    print('Training XGBoost model...')
 
     if input.mode == 'classification':
         Y_train = np.argmax(Y_train, axis=1)
@@ -77,36 +78,12 @@ def main_function():
     print('num classes: ' + str(num_classes))
     print('mode: ' + str(input.mode))
 
-    dtrain = lgb.Dataset(X_train, label=Y_train)
-    dval = lgb.Dataset(X_test, label=Y_test)
-
-    params = None
-    if input.mode == 'regression':
-        params = {
-            "objective": "regression",
-            "num_classes": 1
-        }
-    else:
-        if num_classes == 2:
-            params = {
-                "objective": "binary",
-                "num_classes": 1
-            }
-        else:
-            params = {
-                "objective": "multiclass",
-                "num_classes": num_classes
-            }
-
-    clf = lgb.train(
-        params,
-        dtrain,
-        valid_sets=[dtrain, dval],
-        callbacks=[lgb.log_evaluation()]
-    )
+    clf = xgb.XGBClassifier(n_estimators=2, max_depth=2)
+    clf.fit(X_train, Y_train)
+    clf.save_model('model.json')
 
     print(' ')
-    print('Calculating LGBM random forest accuracy...')
+    print('Calculating XGBoost random forest accuracy...')
 
     if input.mode == 'regression':
         predicted_y = clf.predict(X_test)
@@ -121,14 +98,13 @@ def main_function():
                 if Y_test[idx] == int(round(pred[0])):
                     num_correct += 1
             else:
-                pred = np.argmax(pred, axis=1)
                 if Y_test[idx] == pred[0]:
                     num_correct += 1
         print(f'Accuracy (validation set): {num_correct / len(Y_test)}')
 
     print('Saving LGBM model...')
-    file_lgbm = os.path.join(args.out_directory, 'model.txt')
-    clf.save_model(file_lgbm)
+    # file_lgbm = os.path.join(args.out_directory, 'model.txt')
+    # clf.save_model(file_lgbm)
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, exit_gracefully)
