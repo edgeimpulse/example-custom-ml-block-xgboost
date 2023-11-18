@@ -80,7 +80,6 @@ def main_function():
 
     clf = xgb.XGBClassifier(n_estimators=2, max_depth=2)
     clf.fit(X_train, Y_train)
-    clf.save_model('model.json')
 
     print(' ')
     print('Calculating XGBoost random forest accuracy...')
@@ -102,9 +101,9 @@ def main_function():
                     num_correct += 1
         print(f'Accuracy (validation set): {num_correct / len(Y_test)}')
 
-    print('Saving LGBM model...')
-    # file_lgbm = os.path.join(args.out_directory, 'model.txt')
-    # clf.save_model(file_lgbm)
+    print('Saving XGBoost model...')
+    file_lgbm = os.path.join(args.out_directory, 'model.json')
+    clf.save_model(file_lgbm)
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, exit_gracefully)
