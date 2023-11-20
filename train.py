@@ -78,8 +78,13 @@ def main_function():
     print('num classes: ' + str(num_classes))
     print('mode: ' + str(input.mode))
 
-    clf = xgb.XGBClassifier(n_estimators=2, max_depth=2)
-    clf.fit(X_train, Y_train)
+    clf = None
+    if input.mode == 'regression':
+        clf = xgb.XGBRegressor(n_estimators=2, max_depth=2)
+        clf.fit(X_train, Y_train, verbose=True)
+    else:
+        clf = xgb.XGBClassifier(n_estimators=2, max_depth=2)
+        clf.fit(X_train, Y_train, verbose=True)
 
     print(' ')
     print('Calculating XGBoost random forest accuracy...')
