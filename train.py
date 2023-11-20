@@ -122,6 +122,11 @@ def main_function():
                 'num_class': num_classes
             }
 
+    params['learning_rate'] = learning_rate
+    params['max_depth'] = max_depth
+    params['num_parallel_tree'] = num_parallel_tree
+    params['max_leaves'] = max_leaves
+
     D_train = xgb.DMatrix(X_train, Y_train)
     D_valid = xgb.DMatrix(X_test, Y_test)
     clf = xgb.train(
