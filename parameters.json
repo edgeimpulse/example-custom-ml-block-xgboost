@@ -1,13 +1,31 @@
 [{
-    "name": "Number of boosting iterations",
-    "value": "10",
+    "name": "Learning rate",
+    "value": "0.3",
+    "type": "float",
+    "help": "Step size shrinkage used in update to prevents overfitting.",
+    "param": "learning-rate"
+}, {
+    "name": "Max. leaves",
+    "value": "0",
     "type": "int",
-    "help": "Number of boosting iterations",
-    "param": "num-iterations"
+    "help": "Maximum number of nodes to be added.",
+    "param": "max-leaves"
+}, {
+    "name": "Parallel trees",
+    "value": "1",
+    "type": "int",
+    "help": "Number of parallel trees constructed during each iteration.",
+    "param": "num-parallel-tree"
 }, {
     "name": "Max. depth",
-    "value": "20",
+    "value": "6",
     "type": "int",
-    "help": "Limit the max depth for tree model. This is used to deal with over-fitting when the dataset is small.",
+    "help": "Maximum depth of a tree. Increasing this value will make the model more complex and more likely to overfit.",
     "param": "max-depth"
+}, {
+    "name": "Num. boost round",
+    "value": "10",
+    "type": "int",
+    "help": "Number of boosting iterations.",
+    "param": "num-boost-round"
 }]

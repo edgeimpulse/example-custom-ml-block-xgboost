@@ -23,10 +23,16 @@ parser.add_argument('--data-directory', type=str, required=True,
 parser.add_argument('--out-directory', type=str, required=True,
                     help='Where to write the data')
 
-parser.add_argument('--num-iterations', type=int, required=False,
-                    help='Number of training cycles')
+parser.add_argument('--learning-rate', type=float, required=False,
+                    help='Step size shrinkage used in update to prevents overfitting.')
+parser.add_argument('--max-leaves', type=int, required=False,
+                    help='Maximum number of nodes to be added.')
+parser.add_argument('--num-parallel-tree', type=int, required=False,
+                    help='Number of parallel trees constructed during each iteration.')
 parser.add_argument('--max-depth', type=int, required=False,
                     help='Maximum depth')
+parser.add_argument('--num-boost-round', type=int, required=False,
+                    help='Number of boosting iterations.')
 
 args, unknown = parser.parse_known_args()
 
@@ -45,6 +51,20 @@ MODEL_INPUT_SHAPE = parse_input_shape(input.inputShapeString)
 # The length of the model's input, used to determine the reshape inside the model
 MODEL_INPUT_LENGTH = MODEL_INPUT_SHAPE[0]
 MAX_TRAINING_TIME_S = input.maxTrainingTimeSeconds
+
+class XGBLogging(xgb.callback.TrainingCallback):
+    def __init__(self, epoch_log_interval=100):
+        self.epoch_log_interval = epoch_log_interval
+
+    def after_iteration(self, model, epoch, evals_log):
+        if epoch % self.epoch_log_interval == 0:
+            for data, metric in evals_log.items():
+                metrics = list(metric.keys())
+                metrics_str = ""
+                for m_key in metrics:
+                    metrics_str = metrics_str + f"{m_key}: {metric[m_key][-1]}"
+                print(f"Epoch: {epoch}, {data}: {metrics_str}")
+        return False
 
 
 def exit_gracefully(signum, frame):
@@ -67,37 +87,62 @@ def main_function():
         Y_train = np.argmax(Y_train, axis=1)
         Y_test = np.argmax(Y_test, axis=1)
 
-    num_iterations = args.num_iterations or 10
-    max_depth = args.max_depth or 20
+    max_depth = args.max_depth or 6
+    num_parallel_tree = args.num_parallel_tree or 1
+    max_leaves = args.max_leaves or 0
+    learning_rate = args.learning_rate or 0.3
+    num_boost_round = args.num_boost_round or 10
+
     num_features = MODEL_INPUT_SHAPE[0]
     num_classes = len(input.classes)
 
-    print('Num. iterations: ' + str(num_iterations))
     print('Max. depth: ' + str(max_depth))
+    print('Num. parallel tree: ' + str(num_parallel_tree))
+    print('Max. leaves: ' + str(max_leaves))
+    print('Learning rate: ' + str(learning_rate))
+    print('Num. boost round: ' + str(num_boost_round))
+    print('')
     print('num features: ' + str(num_features))
     print('num classes: ' + str(num_classes))
     print('mode: ' + str(input.mode))
 
-    clf = None
+    params = None
     if input.mode == 'regression':
-        clf = xgb.XGBRegressor(n_estimators=2, max_depth=2)
-        clf.fit(X_train, Y_train, verbose=True)
+        params = {
+            "objective": "reg:squarederror"
+        }
     else:
-        clf = xgb.XGBClassifier(n_estimators=2, max_depth=2)
-        clf.fit(X_train, Y_train, verbose=True)
+        if num_classes == 2:
+            params = {
+                "objective": "binary:logistic"
+            }
+        else:
+            params =  {
+                'objective': 'multi:softmax',
+                'num_class': num_classes
+            }
+
+    D_train = xgb.DMatrix(X_train, Y_train)
+    D_valid = xgb.DMatrix(X_test, Y_test)
+    clf = xgb.train(
+        params,
+        D_train,
+        evals=[(D_train, 'Train'), (D_valid, 'Valid')],
+        num_boost_round=num_boost_round,
+        verbose_eval=True)
 
     print(' ')
     print('Calculating XGBoost random forest accuracy...')
 
     if input.mode == 'regression':
-        predicted_y = clf.predict(X_test)
+        predicted_y = clf.predict(xgb.DMatrix(X_test))
         print('r^2: ' + str(metrics.r2_score(Y_test, predicted_y)))
         print('mse: ' + str(metrics.mean_squared_error(Y_test, predicted_y)))
         print('log(mse): ' + str(metrics.mean_squared_log_error(Y_test, predicted_y)))
     else:
         num_correct = 0
         for idx in range(len(Y_test)):
-            pred = clf.predict(X_test[idx].reshape(1, -1))
+            pred = clf.predict(xgb.DMatrix(X_test[idx].reshape(1, -1)))
             if num_classes == 2:
                 if Y_test[idx] == int(round(pred[0])):
                     num_correct += 1
