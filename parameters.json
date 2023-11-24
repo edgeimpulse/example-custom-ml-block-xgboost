@@ -5,18 +5,6 @@
     "help": "Step size shrinkage used in update to prevents overfitting.",
     "param": "learning-rate"
 }, {
-    "name": "Max. leaves",
-    "value": "0",
-    "type": "int",
-    "help": "Maximum number of nodes to be added.",
-    "param": "max-leaves"
-}, {
-    "name": "Parallel trees",
-    "value": "1",
-    "type": "int",
-    "help": "Number of parallel trees constructed during each iteration.",
-    "param": "num-parallel-tree"
-}, {
     "name": "Max. depth",
     "value": "6",
     "type": "int",
@@ -28,4 +16,39 @@
     "type": "int",
     "help": "Number of boosting iterations.",
     "param": "num-boost-round"
+}, {
+    "name": "L2",
+    "value": "1.0",
+    "type": "float",
+    "help": "L2 regularization term on weights. Increasing this value will make model more conservative.",
+    "param": "l2",
+    "section": "advanced"
+}, {
+    "name": "L1",
+    "value": "0.0",
+    "type": "float",
+    "help": "L1 regularization term on weights. Increasing this value will make model more conservative.",
+    "param": "l1",
+    "section": "advanced"
+}, {
+    "name": "Max. leaves",
+    "value": "0",
+    "type": "int",
+    "help": "Maximum number of nodes to be added.",
+    "param": "max-leaves",
+    "section": "advanced"
+}, {
+    "name": "Min. child weight",
+    "value": "0.0",
+    "type": "float",
+    "help": "Minimum sum of instance weight (hessian) needed in a child.",
+    "param": "min-child-weight",
+    "section": "advanced"
+}, {
+    "name": "Subsample",
+    "value": "1.0",
+    "type": "float",
+    "help": "Subsample ratio of the training instances.",
+    "param": "subsample",
+    "section": "advanced"
 }]

@@ -10,7 +10,6 @@ sys.path.append('./resources/libraries')
 import ei_tensorflow.training
 from ei_shared.parse_train_input import parse_train_input, parse_input_shape
 
-
 RANDOM_SEED = 1
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -23,16 +22,23 @@ parser.add_argument('--data-directory', type=str, required=True,
 parser.add_argument('--out-directory', type=str, required=True,
                     help='Where to write the data')
 
-parser.add_argument('--learning-rate', type=float, required=False,
+parser.add_argument('--learning-rate', type=float, required=False, default=0.3,
                     help='Step size shrinkage used in update to prevents overfitting.')
+parser.add_argument('--max-depth', type=int, required=False, default=6,
+                    help='Maximum depth')
+parser.add_argument('--num-boost-round', type=int, required=False, default=10,
+                    help='Number of boosting iterations.')
+
+parser.add_argument('--l2', type=float, required=False, default=1.0,
+                    help='L2 regularization term on weights. Increasing this value will make model more conservative.')
+parser.add_argument('--l1', type=float, required=False, default=0.0,
+                    help='L1 regularization term on weights. Increasing this value will make model more conservative.')
 parser.add_argument('--max-leaves', type=int, required=False,
                     help='Maximum number of nodes to be added.')
-parser.add_argument('--num-parallel-tree', type=int, required=False,
-                    help='Number of parallel trees constructed during each iteration.')
-parser.add_argument('--max-depth', type=int, required=False,
-                    help='Maximum depth')
-parser.add_argument('--num-boost-round', type=int, required=False,
-                    help='Number of boosting iterations.')
+parser.add_argument('--min-child-weight', type=float, required=False, default=0.0,
+                    help='Minimum sum of instance weight (hessian) needed in a child.')
+parser.add_argument('--subsample', type=float, required=False, default=1.0,
+                    help='Subsample ratio of the training instances.')
 
 args, unknown = parser.parse_known_args()
 
@@ -52,21 +58,6 @@ MODEL_INPUT_SHAPE = parse_input_shape(input.inputShapeString)
 MODEL_INPUT_LENGTH = MODEL_INPUT_SHAPE[0]
 MAX_TRAINING_TIME_S = input.maxTrainingTimeSeconds
 
-class XGBLogging(xgb.callback.TrainingCallback):
-    def __init__(self, epoch_log_interval=100):
-        self.epoch_log_interval = epoch_log_interval
-
-    def after_iteration(self, model, epoch, evals_log):
-        if epoch % self.epoch_log_interval == 0:
-            for data, metric in evals_log.items():
-                metrics = list(metric.keys())
-                metrics_str = ""
-                for m_key in metrics:
-                    metrics_str = metrics_str + f"{m_key}: {metric[m_key][-1]}"
-                print(f"Epoch: {epoch}, {data}: {metrics_str}")
-        return False
-
-
 def exit_gracefully(signum, frame):
     print("")
     print("Terminated by user", flush=True)
@@ -80,28 +71,13 @@ def main_function():
         input, args.data_directory, RANDOM_SEED, None, MODEL_INPUT_SHAPE, None
     )
 
-    print('')
-    print('Training XGBoost model...')
-
     if input.mode == 'classification':
         Y_train = np.argmax(Y_train, axis=1)
         Y_test = np.argmax(Y_test, axis=1)
 
-    max_depth = args.max_depth or 6
-    num_parallel_tree = args.num_parallel_tree or 1
-    max_leaves = args.max_leaves or 0
-    learning_rate = args.learning_rate or 0.3
-    num_boost_round = args.num_boost_round or 10
-
     num_features = MODEL_INPUT_SHAPE[0]
     num_classes = len(input.classes)
 
-    print('Max. depth: ' + str(max_depth))
-    print('Num. parallel tree: ' + str(num_parallel_tree))
-    print('Max. leaves: ' + str(max_leaves))
-    print('Learning rate: ' + str(learning_rate))
-    print('Num. boost round: ' + str(num_boost_round))
-    print('')
     print('num features: ' + str(num_features))
     print('num classes: ' + str(num_classes))
     print('mode: ' + str(input.mode))
@@ -122,10 +98,17 @@ def main_function():
                 'num_class': num_classes
             }
 
-    params['learning_rate'] = learning_rate
-    params['max_depth'] = max_depth
-    params['num_parallel_tree'] = num_parallel_tree
-    params['max_leaves'] = max_leaves
+    params['learning_rate'] = args.learning_rate
+    params['max_depth'] = args.max_depth
+    params['lambda'] = args.l2
+    params['alpha'] = args.l1
+    params['min_child_weight'] = args.min_child_weight
+    params['subsample'] = args.subsample
+
+    print('params:')
+    print(params)
+    print(' ')
+    print('Training XGBoost random forest...')
 
     D_train = xgb.DMatrix(X_train, Y_train)
     D_valid = xgb.DMatrix(X_test, Y_test)
@@ -133,7 +116,7 @@ def main_function():
         params,
         D_train,
         evals=[(D_train, 'Train'), (D_valid, 'Valid')],
-        num_boost_round=num_boost_round,
+        num_boost_round=args.num_boost_round,
         verbose_eval=True)
 
     print(' ')
