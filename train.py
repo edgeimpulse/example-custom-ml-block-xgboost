@@ -1,13 +1,10 @@
 import sys, os, argparse
-import lightgbm as lgb
 import numpy as np
 import sys, os, signal, random, time, argparse
-import logging, threading
 from sklearn import metrics
 import xgboost as xgb
 
 sys.path.append('./resources/libraries')
-import ei_tensorflow.training
 from ei_shared.parse_train_input import parse_train_input, parse_input_shape
 
 RANDOM_SEED = 1
@@ -67,9 +64,11 @@ def exit_gracefully(signum, frame):
 def main_function():
     """This function is used to avoid contaminating the global scope"""
 
-    train_dataset, validation_dataset, samples_dataset, X_train, X_test, Y_train, Y_test, has_samples, X_samples, Y_samples = ei_tensorflow.training.get_dataset_from_folder(
-        input, args.data_directory, RANDOM_SEED, None, MODEL_INPUT_SHAPE, None
-    )
+    # grab train/test set
+    X_train = np.load(os.path.join(args.data_directory, 'X_split_train.npy'))
+    Y_train = np.load(os.path.join(args.data_directory, 'Y_split_train.npy'))
+    X_test = np.load(os.path.join(args.data_directory, 'X_split_test.npy'))
+    Y_test = np.load(os.path.join(args.data_directory, 'Y_split_test.npy'))
 
     if input.mode == 'classification':
         Y_train = np.argmax(Y_train, axis=1)
@@ -140,8 +139,8 @@ def main_function():
         print(f'Accuracy (validation set): {num_correct / len(Y_test)}')
 
     print('Saving XGBoost model...')
-    file_lgbm = os.path.join(args.out_directory, 'model.json')
-    clf.save_model(file_lgbm)
+    file_xgb = os.path.join(args.out_directory, 'model.json')
+    clf.save_model(file_xgb)
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, exit_gracefully)
