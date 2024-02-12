@@ -1,3 +1,5 @@
 data/
 out/
-model.txt
+model.json
+.ei-block-config
+.DS_Store
